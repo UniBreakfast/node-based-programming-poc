@@ -1,0 +1,172 @@
+<style>
+  * {
+    margin: 10px;
+  }
+
+  button[type="radio"] {
+    background-color: lightgray;
+  }
+
+  button[type="radio"][data-on] {
+    background-color: green;
+  }
+
+  .selected {
+    outline: 10px solid orange;
+  }
+</style>
+
+<fieldset>
+  <legend>components</legend>
+
+  <button type="button" data-out>button</button>
+  <button type="radio" data-in>&nbsp;</button>
+</fieldset>
+
+<fieldset>
+  <legend>mode</legend>
+
+  <select>
+    <option>add/remove</option>
+    <option>link/unlink</option>
+    <option>play</option>
+  </select>
+</fieldset>
+
+<fieldset>
+  <legend>board</legend>
+</fieldset>
+
+<script>
+  const [componentsFieldSet, modeFieldSet, boardFieldSet] = document.querySelectorAll('fieldset');
+
+  componentsFieldSet.onclick = e => {
+    if (isFieldSet(e) || !isInAddRemoveMode()) return;
+
+    if (e.target.checked) e.target.checked = false;
+
+    const component = e.target.cloneNode(true);
+
+    component.id = 'r' + (Math.random() * 1e9 | 0);
+    boardFieldSet.append(component);
+  };
+
+  boardFieldSet.onclick = e => {
+    if (isFieldSet(e)) return;
+
+    if (isInAddRemoveMode()) {
+      unlink(e.target);
+      e.target.remove();
+
+    } else if (isInLinkMode() && !areTwoSelected()) {
+      if (isSelected(e.target)) return deselect(e.target);
+
+      if (isIn(e.target)) {
+        const otherSelected = getSelected();
+
+        if (!otherSelected) return select(e.target);
+
+        if (isIn(otherSelected)) {
+          deselect(otherSelected);
+          select(e.target);
+
+        } else if (isOut(otherSelected)) {
+          select(e.target);
+          link(otherSelected, e.target);
+
+          setTimeout(() => {
+            deselect(otherSelected);
+            deselect(e.target);
+          }, 333);
+        }
+      }
+
+      if (isOut(e.target)) {
+        const otherSelected = getSelected();
+
+        if (!otherSelected) return select(e.target);
+
+        if (isOut(otherSelected)) {
+          deselect(otherSelected);
+          select(e.target);
+
+        } else if (isIn(otherSelected)) {
+          select(e.target);
+          link(otherSelected, e.target);
+
+          setTimeout(() => {
+            deselect(otherSelected);
+            deselect(e.target);
+          }, 333);
+        }
+      }
+
+    } else if (isInPlayMode() || isLinkedButton(e.target)) {
+      const linkedButton = e.target.closest('button[type="button"][data-out][data-link]');
+
+      if (linkedButton) {
+        const linkedRadio = boardFieldSet.querySelector(`button#${linkedButton.dataset.link}[type="radio"][data-in]`)
+
+        linkedRadio.dataset.on = true;
+      }
+    }
+  };
+
+  function isFieldSet(e) {
+    return e.target == e.currentTarget || e.target == e.currentTarget.firstElementChild;
+  }
+
+  function isInAddRemoveMode() {
+    return modeFieldSet.lastElementChild.value == 'add/remove';
+  }
+
+  function isInLinkMode() {
+    return modeFieldSet.lastElementChild.value == 'link/unlink';
+  }
+
+  function isInPlayMode() {
+    return modeFieldSet.lastElementChild.value == 'play';
+  }
+
+  function areTwoSelected() {
+    return boardFieldSet.querySelectorAll('.selected').length == 2;
+  }
+
+  function isSelected(el) {
+    return el.classList.contains('selected');
+  }
+
+  function isIn(el) {
+    return el.hasAttribute('data-in');
+  }
+
+  function isOut(el) {
+    return el.hasAttribute('data-out');
+  }
+
+  function getSelected() {
+    return boardFieldSet.querySelector('.selected');
+  }
+
+  function select(el) {
+    el.classList.add('selected');
+  }
+
+  function deselect(el) {
+    el.classList.remove('selected');
+  }
+
+  function link(el1, el2) {
+    unlink(el1);
+    unlink(el2);
+
+    el1.dataset.link = el2.id;
+    el2.dataset.link = el1.id;
+  }
+
+  function unlink(el) {
+    delete el.dataset.link;
+
+    boardFieldSet.querySelectorAll(`[data-link="${el.id}"]`).forEach(unlink);
+  }
+</script>
